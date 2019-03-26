@@ -10,6 +10,7 @@ type Employee struct {
 	FirstName        string        `json:"firstName" bson:"firstName"`
 	LastName         string        `json:"lastName" bson:"lastName"`
 	Employees2Review []Employee    `json:"employees2Review" bson:"employees2Review"`
+	Email            string        `json:"email"`
 }
 
 func (e Employee) sendFeedback() {

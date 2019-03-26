@@ -25,6 +25,14 @@ func GetEmployee(id bson.ObjectId) (models.Employee, error) {
 	return e, nil
 }
 
+func GetEmployeeEmail(email string) (models.Employee, error) {
+	getEmployeesCollection()
+	e := models.Employee{}
+
+	err := Employees.Find(bson.M{"email": email}).One(&e)
+	return e, err
+}
+
 // GetEmployees return a list of employees given their IDs
 func GetEmployees(ids []bson.ObjectId) ([]models.Employee, error) {
 	getEmployeesCollection()
@@ -51,27 +59,19 @@ func AddEmployee(e *models.Employee) error {
 	e.ID = bson.NewObjectId()
 
 	err := Employees.Insert(*e)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // UpdateEmployee updates the given employee and returns the employee and an error or nil
 func UpdateEmployee(e *models.Employee) error {
 	getEmployeesCollection()
 	err := Employees.UpdateId(e.ID, e)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // DeleteEmployee removes an employee from the collection and returns an error or nil
 func DeleteEmployee(id bson.ObjectId) error {
+	getEmployeesCollection()
 	err := Employees.RemoveId(id)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

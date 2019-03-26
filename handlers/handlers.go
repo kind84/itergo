@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/kind84/iterpro/repo"
@@ -78,6 +79,11 @@ func AddEmployee(w http.ResponseWriter, req *http.Request, _ httprouter.Params) 
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	ej, _ := json.Marshal(e)
+
+	w = setHeaders(w)
+	fmt.Fprintf(w, "%s\n", ej)
 }
 
 // UpdateEmployee updates an employee
@@ -145,8 +151,24 @@ func GetEmployee(w http.ResponseWriter, req *http.Request, p httprouter.Params) 
 
 	ej, _ := json.Marshal(e)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w = setHeaders(w)
+	fmt.Fprintf(w, "%s\n", ej)
+}
+
+// GetEmployeeEmail returns an employee given its email
+func GetEmployeeEmail(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	email := p.ByName("email")
+
+	e, err := repo.GetEmployeeEmail(email)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	ej, _ := json.Marshal(e)
+
+	w = setHeaders(w)
 	fmt.Fprintf(w, "%s\n", ej)
 }
 
@@ -161,8 +183,7 @@ func GetEmployees(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 
 	esj, _ := json.Marshal(es)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w = setHeaders(w)
 	fmt.Fprintf(w, "%s\n", esj)
 }
 
@@ -196,8 +217,7 @@ func Get2BReviewed(w http.ResponseWriter, req *http.Request, p httprouter.Params
 	}
 
 	esj, _ := json.Marshal(es)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w = setHeaders(w)
 	fmt.Fprintf(w, "%s\n", esj)
 }
 
@@ -212,16 +232,41 @@ func GetReviews(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	}
 
 	rsj, _ := json.Marshal(rs)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w = setHeaders(w)
 	fmt.Fprintf(w, "%s\n", rsj)
+}
+
+func Username(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var un struct {
+		Username string `json:"username"`
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&un)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, err = repo.GetUser(un.Username)
+	if err != nil && err != mgo.ErrNotFound {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err == nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusForbidden)
+		io.WriteString(w, "Username already taken")
+		return
+	}
 }
 
 // Set2Review sets employees that will have to review the given employee
 func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	r := struct {
 		ToReview bson.ObjectId `json:"toReview"`
-		Reviewer bson.ObjectId `json:"rviewer"`
+		Reviewer bson.ObjectId `json:"reviewer"`
 	}{}
 
 	err := json.NewDecoder(req.Body).Decode(&r)
@@ -259,4 +304,11 @@ func toBReviewed(e *models.Employee, r *models.Review) (bool, int) {
 		}
 	}
 	return false, -1
+}
+
+func setHeaders(w http.ResponseWriter) http.ResponseWriter {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return w
 }

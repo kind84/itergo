@@ -187,39 +187,39 @@ func GetEmployees(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 	fmt.Fprintf(w, "%s\n", esj)
 }
 
-// Get2BReviewed returns the list of employees to be reviewed by a given employee ID
-func Get2BReviewed(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	id := p.ByName("id")
+// // Get2BReviewed returns the list of employees to be reviewed by a given employee ID
+// func Get2BReviewed(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+// 	id := p.ByName("id")
 
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+// 	if !bson.IsObjectIdHex(id) {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		return
+// 	}
 
-	oid := bson.ObjectIdHex(id)
+// 	oid := bson.ObjectIdHex(id)
 
-	e, err := repo.GetEmployee(oid)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+// 	e, err := repo.GetEmployee(oid)
+// 	if err != nil {
+// 		log.Println(err)
+// 		w.WriteHeader(http.StatusNotFound)
+// 		return
+// 	}
 
-	var ids []bson.ObjectId
-	for _, ee := range e.Employees2Review {
-		ids = append(ids, ee.ID)
-	}
-	es, err := repo.GetEmployees(ids)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+// 	var ids []bson.ObjectId
+// 	for _, ee := range e.Employees2Review {
+// 		ids = append(ids, ee.ID)
+// 	}
+// 	es, err := repo.GetEmployees(ids)
+// 	if err != nil {
+// 		log.Println(err)
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		return
+// 	}
 
-	esj, _ := json.Marshal(es)
-	w = setHeaders(w)
-	fmt.Fprintf(w, "%s\n", esj)
-}
+// 	esj, _ := json.Marshal(es)
+// 	w = setHeaders(w)
+// 	fmt.Fprintf(w, "%s\n", esj)
+// }
 
 func GetReviews(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	id := p.ByName("id")

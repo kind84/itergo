@@ -17,7 +17,7 @@ func main() {
 	mux.GET("/employee/:id", handlers.GetEmployee)
 	mux.GET("/email/:email", handlers.GetEmployeeEmail)
 	mux.GET("/employees", handlers.GetEmployees)
-	mux.GET("/tobereviewed/:id", handlers.Get2BReviewed)
+	// mux.GET("/tobereviewed/:id", handlers.Get2BReviewed)
 	mux.GET("/reviews/:id", handlers.GetReviews)
 	mux.POST("/sendfeedback", handlers.SendFeedback)
 	mux.POST("/addemployee", handlers.AddEmployee)

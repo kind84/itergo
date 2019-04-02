@@ -21,10 +21,7 @@ func AddReview(r *models.Review) error {
 	r.ID = bson.NewObjectId()
 
 	err := Reviews.Insert(*r)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetReviews(id string) ([]models.Review, error) {

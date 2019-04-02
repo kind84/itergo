@@ -6,14 +6,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/kind84/iterpro/repo"
-
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/kind84/iterpro/models"
+	"github.com/kind84/iterpro/repo"
 )
 
 // Welcome message
@@ -25,7 +26,21 @@ func Welcome(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var r models.Review
 
-	err := json.NewDecoder(req.Body).Decode(&r)
+	ts := getToken(req)
+	if ts == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	_, err := authorize("employee", ts)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusUnauthorized)
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	err = json.NewDecoder(req.Body).Decode(&r)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -288,6 +303,9 @@ func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	t.Employees2Review = nil
+
 	e.Employees2Review = append(e.Employees2Review, t)
 	err = repo.UpdateEmployee(&e)
 	if err != nil {
@@ -311,4 +329,13 @@ func setHeaders(w http.ResponseWriter) http.ResponseWriter {
 	w.WriteHeader(http.StatusOK)
 
 	return w
+}
+
+func getToken(req *http.Request) string {
+	auth := req.Header.Get("Authorization")
+	if auth == "" {
+		return ""
+	}
+
+	return strings.Split(auth, "Bearer ")[1]
 }

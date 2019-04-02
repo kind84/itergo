@@ -59,19 +59,21 @@ func Login(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    ts,
-		Expires:  et,
-		HttpOnly: true,
-	})
+	rt, err := newRefresh(u.Username, u.Role)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	rr := struct {
-		Token   string `json:"token"`
-		Expires string `json:"expires"`
+		Token        string `json:"token"`
+		Expires      string `json:"expires"`
+		RefreshToken string `json:"refreshToken"`
 	}{
-		Token:   ts,
-		Expires: et.Format(time.RFC3339),
+		Token:        ts,
+		Expires:      et.Format(time.RFC3339),
+		RefreshToken: rt,
 	}
 
 	w = setHeaders(w)
@@ -131,19 +133,64 @@ func Signup(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    ts,
-		Expires:  et,
-		HttpOnly: true,
-	})
+	rt, err := newRefresh(u.Username, u.Role)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	rr := struct {
-		Token   string `json:"token"`
-		Expires string `json:"expires"`
+		Token        string `json:"token"`
+		Expires      string `json:"expires"`
+		RefreshToken string `json:"refreshToken"`
 	}{
-		Token:   ts,
-		Expires: et.Format(time.RFC3339),
+		Token:        ts,
+		Expires:      et.Format(time.RFC3339),
+		RefreshToken: rt,
+	}
+
+	w = setHeaders(w)
+	json.NewEncoder(w).Encode(&rr)
+}
+
+func RefreshToken(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	rt := getToken(req)
+	if rt == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	c, err := authorize("", rt)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusUnauthorized)
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	ts, et, err := newJWT(c.Username, c.Role)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rt, err = newRefresh(c.Username, c.Role)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rr := struct {
+		Token        string `json:"token"`
+		Expires      string `json:"expires"`
+		RefreshToken string `json:"refreshToken"`
+	}{
+		Token:        ts,
+		Expires:      et.Format(time.RFC3339),
+		RefreshToken: rt,
 	}
 
 	w = setHeaders(w)
@@ -151,7 +198,7 @@ func Signup(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 }
 
 func newJWT(username, role string) (string, time.Time, error) {
-	et := time.Now().Add(5 * time.Minute)
+	et := time.Now().Add(30 * time.Second)
 	claims := &Claims{
 		Username: username,
 		Role:     role,
@@ -168,26 +215,40 @@ func newJWT(username, role string) (string, time.Time, error) {
 	return ts, et, nil
 }
 
-func authorize(role string, ts string) (bool, error) {
+func newRefresh(username, role string) (string, error) {
+	et := time.Now().Add(365 * 24 * time.Hour)
+	claims := &Claims{
+		Username: username,
+		Role:     role,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: et.Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ts, err := token.SignedString(jk)
+	if err != nil {
+		return "", err
+	}
+	return ts, nil
+}
+
+func authorize(role, ts string) (*Claims, error) {
 	claims := &Claims{}
-	t, err := jwt.ParseWithClaims(ts, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(ts, claims, func(t *jwt.Token) (interface{}, error) {
 		return jk, nil
 	})
-
-	if !t.Valid {
-		return false, errors.New("Invalid token")
-	}
 	if err != nil {
-		return false, err
+		return claims, err
 	}
 
-	u, err := repo.GetUser(claims.Username)
-	if err != nil {
-		return false, err
-	}
-	if u.Role != role {
-		return false, errors.New("Invalid role")
+	if claims, ok := token.Claims.(*Claims); !ok || !token.Valid {
+		return claims, errors.New("Invalid token")
 	}
 
-	return true, nil
+	if role != "" && claims.Role != role {
+		return claims, errors.New("Invalid role")
+	}
+
+	return claims, nil
 }

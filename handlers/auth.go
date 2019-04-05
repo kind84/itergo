@@ -22,6 +22,7 @@ var jk = []byte("my_super_secret_key")
 type Claims struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	Refresh  bool   `json:"refresh"`
 	jwt.StandardClaims
 }
 
@@ -161,7 +162,7 @@ func RefreshToken(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 		return
 	}
 
-	c, err := authorize("", rt)
+	c, err := authorize("", rt, true)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusUnauthorized)
@@ -220,6 +221,7 @@ func newRefresh(username, role string) (string, error) {
 	claims := &Claims{
 		Username: username,
 		Role:     role,
+		Refresh:  true,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: et.Unix(),
 		},
@@ -233,7 +235,7 @@ func newRefresh(username, role string) (string, error) {
 	return ts, nil
 }
 
-func authorize(role, ts string) (*Claims, error) {
+func authorize(role, ts string, refresh bool) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(ts, claims, func(t *jwt.Token) (interface{}, error) {
 		return jk, nil
@@ -242,7 +244,7 @@ func authorize(role, ts string) (*Claims, error) {
 		return claims, err
 	}
 
-	if claims, ok := token.Claims.(*Claims); !ok || !token.Valid {
+	if claims, ok := token.Claims.(*Claims); !ok || claims.Refresh != refresh || !token.Valid {
 		return claims, errors.New("Invalid token")
 	}
 

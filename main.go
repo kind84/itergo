@@ -23,6 +23,7 @@ func main() {
 	mux.POST("/sendfeedback", handlers.SendFeedback)
 	mux.POST("/addemployee", handlers.AddEmployee)
 	mux.POST("/updateemployee", handlers.UpdateEmployee)
+	mux.POST("/deleteemployee/:id", handlers.DeleteEmployee)
 	mux.POST("/set2review", handlers.Set2Review)
 	mux.POST("/login", handlers.Login)
 	mux.POST("/signup", handlers.Signup)

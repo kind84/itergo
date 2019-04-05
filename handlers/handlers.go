@@ -32,7 +32,7 @@ func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 		return
 	}
 
-	_, err := authorize("employee", ts)
+	_, err := authorize("employee", ts, false)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusUnauthorized)
@@ -81,7 +81,21 @@ func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 func AddEmployee(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var e models.Employee
 
-	err := json.NewDecoder(req.Body).Decode(&e)
+	ts := getToken(req)
+	if ts == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	_, err := authorize("operator", ts, false)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusUnauthorized)
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	err = json.NewDecoder(req.Body).Decode(&e)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -284,7 +298,21 @@ func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		Reviewer bson.ObjectId `json:"reviewer"`
 	}{}
 
-	err := json.NewDecoder(req.Body).Decode(&r)
+	ts := getToken(req)
+	if ts == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	_, err := authorize("operator", ts, false)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusUnauthorized)
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	err = json.NewDecoder(req.Body).Decode(&r)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)

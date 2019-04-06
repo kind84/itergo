@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,8 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -47,7 +47,7 @@ func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 		return
 	}
 
-	e, err := repo.GetEmployee(r.AuthorID)
+	e, err := repo.GetEmployee(r.AuthorID.String())
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
@@ -126,7 +126,7 @@ func UpdateEmployee(w http.ResponseWriter, req *http.Request, _ httprouter.Param
 		return
 	}
 
-	e, err = repo.GetEmployee(e.ID)
+	e, err = repo.GetEmployee(e.ID.String())
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
@@ -145,14 +145,7 @@ func UpdateEmployee(w http.ResponseWriter, req *http.Request, _ httprouter.Param
 func DeleteEmployee(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	id := p.ByName("id")
 
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	oid := bson.ObjectIdHex(id)
-
-	err := repo.DeleteEmployee(oid)
+	err := repo.DeleteEmployee(id)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -164,14 +157,7 @@ func DeleteEmployee(w http.ResponseWriter, req *http.Request, p httprouter.Param
 func GetEmployee(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	id := p.ByName("id")
 
-	if !bson.IsObjectIdHex(id) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	oid := bson.ObjectIdHex(id)
-
-	e, err := repo.GetEmployee(oid)
+	e, err := repo.GetEmployee(id)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
@@ -278,7 +264,7 @@ func Username(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	}
 
 	_, err = repo.GetUser(un.Username)
-	if err != nil && err != mgo.ErrNotFound {
+	if err != nil && err != mongo.ErrNoDocuments {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -294,8 +280,8 @@ func Username(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 // Set2Review sets employees that will have to review the given employee
 func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	r := struct {
-		ToReview bson.ObjectId `json:"toReview"`
-		Reviewer bson.ObjectId `json:"reviewer"`
+		ToReview primitive.ObjectID `json:"toReview"`
+		Reviewer primitive.ObjectID `json:"reviewer"`
 	}{}
 
 	ts := getToken(req)
@@ -319,13 +305,13 @@ func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	t, err := repo.GetEmployee(r.ToReview)
+	t, err := repo.GetEmployee(r.ToReview.String())
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	e, err := repo.GetEmployee(r.Reviewer)
+	e, err := repo.GetEmployee(r.Reviewer.String())
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)

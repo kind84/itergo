@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"gopkg.in/mgo.v2"
-
 	"github.com/dgrijalva/jwt-go"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/kind84/iterpro/repo"
@@ -97,7 +96,7 @@ func Signup(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 
 	err = nil
 	u, err := repo.GetUser(r.Email)
-	if err != nil && err != mgo.ErrNotFound {
+	if err != nil && err != mongo.ErrNoDocuments {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

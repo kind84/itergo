@@ -1,49 +1,61 @@
 package repo
 
 import (
+	"context"
 	"errors"
 
 	"github.com/kind84/iterpro/models"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Reviews collection
-var Reviews *mgo.Collection
+var Reviews *mongo.Collection
 
 func getReviewsCollection() {
-	Reviews = DB.C("reviews")
+	Reviews = DB.Collection("reviews")
 }
 
 // AddReview creates a new review into the reviews collection
 func AddReview(r *models.Review) error {
 	getReviewsCollection()
-	r.ID = bson.NewObjectId()
+	r.ID = primitive.NewObjectID()
 
-	err := Reviews.Insert(*r)
+	_, err := Reviews.InsertOne(context.TODO(), *r)
 	return err
 }
 
 func GetReviews(id string) ([]models.Review, error) {
 	getReviewsCollection()
 	rs := []models.Review{}
+	var cur *mongo.Cursor
 
 	if id != "" {
-		if !bson.IsObjectIdHex(id) {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
 			return nil, errors.New("Invalid bson ObjectId")
 		}
 
-		oid := bson.ObjectIdHex(id)
-
-		err := Reviews.Find(bson.M{"reviewed_id": oid}).All(&rs)
+		cur, err = Reviews.Find(context.TODO(), bson.M{"reviewed_id": oid})
 		if err != nil {
 			return rs, err
 		}
 	} else {
-		err := Reviews.Find(bson.M{}).All(&rs)
+		var err error
+		cur, err = Reviews.Find(context.TODO(), bson.M{})
 		if err != nil {
 			return rs, err
 		}
+	}
+
+	for cur.Next(context.TODO()) {
+		var el models.Review
+		err := cur.Decode(&el)
+		if err != nil {
+			return rs, err
+		}
+		rs = append(rs, el)
 	}
 	return rs, nil
 }

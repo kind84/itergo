@@ -1,24 +1,33 @@
 package repo
 
 import (
+	"context"
+	"errors"
+
 	"github.com/kind84/iterpro/models"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Employees collection
-var Employees *mgo.Collection
+var Employees *mongo.Collection
 
 func getEmployeesCollection() {
-	Employees = DB.C("employees")
+	Employees = DB.Collection("employees")
 }
 
 // GetEmployee returns an employee from the db, given its ID
-func GetEmployee(id bson.ObjectId) (models.Employee, error) {
+func GetEmployee(id string) (models.Employee, error) {
 	getEmployeesCollection()
 	e := models.Employee{}
 
-	err := Employees.FindId(id).One(&e)
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return e, errors.New("Invalid bson ObjectId")
+	}
+
+	err = Employees.FindOne(context.TODO(), bson.M{"_id": oid}).Decode(&e)
 	if err != nil {
 		return e, err
 	}
@@ -29,49 +38,66 @@ func GetEmployeeEmail(email string) (models.Employee, error) {
 	getEmployeesCollection()
 	e := models.Employee{}
 
-	err := Employees.Find(bson.M{"email": email}).One(&e)
+	err := Employees.FindOne(context.TODO(), bson.M{"email": email}).Decode(&e)
 	return e, err
 }
 
 // GetEmployees return a list of employees given their IDs
-func GetEmployees(ids []bson.ObjectId) ([]models.Employee, error) {
+func GetEmployees(ids []primitive.ObjectID) ([]models.Employee, error) {
 	getEmployeesCollection()
 	es := []models.Employee{}
+	var cur *mongo.Cursor
 
 	if ids != nil {
-		err := Employees.Find(bson.D{{"_id", bson.D{{"$in", ids}}}}).All(&es)
+		var err error
+		cur, err = Employees.Find(context.TODO(), bson.D{{"_id", bson.D{{"$in", ids}}}})
 		if err != nil {
 			return es, err
 		}
 	} else {
-		err := Employees.Find(bson.M{}).All(&es)
+		var err error
+		cur, err = Employees.Find(context.TODO(), bson.M{})
 		if err != nil {
 			return es, err
 		}
 	}
 
+	for cur.Next(context.TODO()) {
+		var el models.Employee
+		err := cur.Decode(&el)
+		if err != nil {
+			return es, err
+		}
+		es = append(es, el)
+	}
 	return es, nil
 }
 
 // AddEmployee creates a new employee and returns an error or nil
 func AddEmployee(e *models.Employee) error {
 	getEmployeesCollection()
-	e.ID = bson.NewObjectId()
+	e.ID = primitive.NewObjectID()
 
-	err := Employees.Insert(*e)
+	_, err := Employees.InsertOne(context.TODO(), *e)
 	return err
 }
 
 // UpdateEmployee updates the given employee and returns the employee and an error or nil
 func UpdateEmployee(e *models.Employee) error {
 	getEmployeesCollection()
-	err := Employees.UpdateId(e.ID, e)
+	_, err := Employees.UpdateOne(context.TODO(), bson.M{"_id": e.ID}, e)
 	return err
 }
 
 // DeleteEmployee removes an employee from the collection and returns an error or nil
-func DeleteEmployee(id bson.ObjectId) error {
+func DeleteEmployee(id string) error {
 	getEmployeesCollection()
-	err := Employees.RemoveId(id)
+
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return errors.New("Invalid bson ObjectId")
+	}
+
+	_, err = Employees.DeleteOne(context.TODO(), bson.M{"_id": oid})
 	return err
 }

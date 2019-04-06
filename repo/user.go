@@ -1,22 +1,25 @@
 package repo
 
 import (
+	"context"
+
 	"github.com/kind84/iterpro/models"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var Users *mgo.Collection
+var Users *mongo.Collection
 
 func getUsersCollection() {
-	Users = DB.C("users")
+	Users = DB.Collection("users")
 }
 
 func SignupUser(u *models.User) error {
 	getUsersCollection()
-	u.ID = bson.NewObjectId()
+	u.ID = primitive.NewObjectID()
 
-	err := Users.Insert(*u)
+	_, err := Users.InsertOne(context.TODO(), *u)
 	if err != nil {
 		return err
 	}
@@ -27,7 +30,7 @@ func GetUser(e string) (models.User, error) {
 	getUsersCollection()
 	u := models.User{}
 
-	err := Users.Find(bson.M{"username": e}).One(&u)
+	err := Users.FindOne(context.TODO(), bson.M{"username": e}).Decode(&u)
 	if err != nil {
 		return u, err
 	}

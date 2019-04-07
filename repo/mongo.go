@@ -14,7 +14,7 @@ var DB *mongo.Database
 
 func init() {
 	// s, err := mgo.Dial("mongodb://localhost")
-	c, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	c, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://mongodb:27017"))
 	if err != nil {
 		panic(err)
 	}

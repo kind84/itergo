@@ -85,7 +85,7 @@ func AddEmployee(e *models.Employee) error {
 // UpdateEmployee updates the given employee and returns the employee and an error or nil
 func UpdateEmployee(e *models.Employee) error {
 	getEmployeesCollection()
-	_, err := Employees.UpdateOne(context.TODO(), bson.M{"_id": e.ID}, e)
+	_, err := Employees.ReplaceOne(context.TODO(), bson.M{"_id": e.ID}, e)
 	return err
 }
 

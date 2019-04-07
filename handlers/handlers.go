@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"go.mongodb.org/mongo-driver/mongo"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -47,7 +47,7 @@ func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 		return
 	}
 
-	e, err := repo.GetEmployee(r.AuthorID.String())
+	e, err := repo.GetEmployee(r.AuthorID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
@@ -72,6 +72,7 @@ func SendFeedback(w http.ResponseWriter, req *http.Request, _ httprouter.Params)
 			return
 		}
 	} else {
+		log.Println(errors.New("Feedback does not match"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -280,8 +281,8 @@ func Username(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 // Set2Review sets employees that will have to review the given employee
 func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	r := struct {
-		ToReview primitive.ObjectID `json:"toReview"`
-		Reviewer primitive.ObjectID `json:"reviewer"`
+		ToReview string `json:"toReview"`
+		Reviewer string `json:"reviewer"`
 	}{}
 
 	ts := getToken(req)
@@ -305,13 +306,13 @@ func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	t, err := repo.GetEmployee(r.ToReview.String())
+	t, err := repo.GetEmployee(r.ToReview)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	e, err := repo.GetEmployee(r.Reviewer.String())
+	e, err := repo.GetEmployee(r.Reviewer)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusNotFound)
@@ -331,7 +332,7 @@ func Set2Review(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 
 func toBReviewed(e *models.Employee, r *models.Review) (bool, int) {
 	for i, e2r := range e.Employees2Review {
-		if r.ReviewedID == e2r.ID {
+		if r.ReviewedID == e2r.ID.Hex() {
 			return true, i
 		}
 	}

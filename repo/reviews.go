@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"errors"
 
 	"github.com/kind84/iterpro/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,12 +31,8 @@ func GetReviews(id string) ([]models.Review, error) {
 	var cur *mongo.Cursor
 
 	if id != "" {
-		oid, err := primitive.ObjectIDFromHex(id)
-		if err != nil {
-			return nil, errors.New("Invalid bson ObjectId")
-		}
-
-		cur, err = Reviews.Find(context.TODO(), bson.M{"reviewed_id": oid})
+		var err error
+		cur, err = Reviews.Find(context.TODO(), bson.M{"reviewed_id": id})
 		if err != nil {
 			return rs, err
 		}
